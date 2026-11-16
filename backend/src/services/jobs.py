@@ -20,7 +20,7 @@ def create(db, data, user):
             except (ValueError,TypeError): raise HTTPException(422, f'{p["label"]} 超出范围或非数值')
         elif str(v) not in [str(o['value']) for o in p.get('options',[])]:
             raise HTTPException(422,f'{p["label"]} 不是有效选项')
-    j=Job(name=data.name, dataset_id=data.dataset_id, params=params, created_by=user.id, created_at=time.time(), status='queued')
+    j=Job(name=data.name, dataset_id=data.dataset_id, params=params, kind=data.kind, created_by=user.id, created_at=time.time(), status='queued', queue_note='已入队，等待调度')
     db.add(j); db.flush()
     return j
 def enqueue(job_id):

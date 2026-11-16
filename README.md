@@ -6,6 +6,16 @@
 数据接入（JSON/CSV、字段验证、批次指纹）→ 参数化分析（异步 Python worker）→ 结果复核（指标、图形、明细、解释、批准）→ 定时分发（本地收件箱、CSV/JSON、SHA256）；另有业务总览和审计轨迹。
 三个贯穿全栈的实体：Dataset 数据批次、Job 分析任务、Report 分发计划；辅助 User、Audit、Delivery。
 
+## 全站试验调度
+夜巡批量试参与抢修研判共用计算名额，调度规则全部在服务端执行：
+- 负责人在「试验调度」页设定同时计算上限（1~8）；调低上限只等在途结束，不强杀。
+- 抢修试验优先；连续启动三次抢修后最早普通试验先行；同类按入队顺序。
+- 调度员经配置行写锁串行化，领取用条件更新兜底，并发领取不超上限、不重复领取。
+- 每次领取颁发执行令牌（attempt+executor），同一试验只由当前有效执行者发布成绩；取消、接管、重试都会使旧令牌失效，迟到成绩拒收并留痕。
+- 取消与完成互斥：取消先提交则拒收成绩，完成先提交则保留成绩并拒绝取消。
+- worker 崩溃后原试验恢复排队等待接管，不新建试验；失败或已取消可原地重试，不重复释放名额。
+- 调度页可查排队原因、名额占用与接管记录；旧试验数据照常查看。
+
 ## 快速启动
 ```bash
 cp .env.example .env
@@ -18,7 +28,7 @@ docker compose exec -T backend python -m scripts.seed_demo
 ## 演示账号与权限
 |账号|密码|真实权限|
 |---|---|---|
-|admin@demo.local|Demo123!|接入、执行、批准、分发、暂停、读取与下载|
+|admin@demo.local|Demo123!|接入、执行、批准、分发、暂停、调度上限、读取与下载|
 |analyst@demo.local|Demo123!|接入、执行、读取与下载；不能批准或安排分发|
 |viewer@demo.local|Demo123!|只读与下载|
 
@@ -29,7 +39,7 @@ Python 3.12 / FastAPI / SQLAlchemy / NumPy / SciPy / scikit-learn；PostgreSQL 1
 ## 目录与工程约定
 backend/src/{models,schemas,services,routes,controllers,middlewares,constants,config,utils}；backend/scripts/seed_demo.py；backend/migrations/initial.py。
 frontend/src/{api,stores,types,components/common,hooks,pages,router,utils,constants}。
-Role 枚举：admin/analyst/viewer；JobStatus：queued/running/completed/failed。后端 backend/src/constants/enums.py，前端 frontend/src/constants/enums.js；路由权限在 middlewares/auth.py；页面按相同角色控制操作入口。
+Role 枚举：admin/analyst/viewer；JobStatus：queued/running/completed/failed/cancelled；JobKind：normal/emergency。后端 backend/src/constants/enums.py，前端 frontend/src/constants/enums.js；路由权限在 middlewares/auth.py；页面按相同角色控制操作入口。
 
 ## 环境变量与 Docker
 COMPOSE_PROJECT_NAME=water-triage；FRONTEND_PORT=18208；BACKEND_PORT=19208；DB_PORT=17708；DB_PASSWORD、JWT_SECRET 见 .env.example；SEED_DEMO 默认 true。共享命名产物卷供后端下载与 worker 写入，数据库/Redis 各持久卷。

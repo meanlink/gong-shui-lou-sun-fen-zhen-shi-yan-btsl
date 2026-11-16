@@ -3,3 +3,6 @@ class JobInput(BaseModel):
     name: str = Field(min_length=2, max_length=160)
     dataset_id: int
     params: dict = Field(default_factory=dict)
+    kind: str = Field(default='normal', pattern='^(normal|emergency)$')
+class PriorityInput(BaseModel):
+    kind: str = Field(pattern='^(normal|emergency)$')

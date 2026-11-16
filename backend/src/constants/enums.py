@@ -8,3 +8,7 @@ class JobStatus(str, Enum):
     running = 'running'
     completed = 'completed'
     failed = 'failed'
+    cancelled = 'cancelled'
+class JobKind(str, Enum):
+    normal = 'normal'
+    emergency = 'emergency'
